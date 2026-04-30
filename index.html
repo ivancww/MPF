@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AVA 獨立強積金策略</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <style>
+        :root { --primary-color: #A32020; --bg-color: #f8f9fa; --card-bg: #ffffff; --text-color: #2c3e50; --accent-blue: #005A9C; }
+        body { font-family: 'PingFang HK', 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; line-height: 1.5; }
+        .header { background: #fff; display: flex; align-items: center; justify-content: center; padding: 15px; border-bottom: 2px solid var(--primary-color); position: sticky; top: 0; z-index: 100; }
+        .app-logo { width: 35px; height: 35px; background: var(--primary-color); border-radius: 8px; margin-right: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; text-align: center; }
+        .header h1 { font-size: 18px; margin: 0; }
+        .container { padding: 15px; max-width: 600px; margin: 0 auto; padding-bottom: 50px; }
+        .section-card { background: var(--card-bg); border-radius: 12px; padding: 18px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .section-title { color: var(--primary-color); font-size: 17px; margin-top: 0; margin-bottom: 12px; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        .content-text { font-size: 15px; color: #444; white-space: pre-wrap; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th { background: #f2f2f2; text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
+        .data-table td { padding: 10px; border-bottom: 1px solid #eee; }
+        .perf-up { color: #d9534f; font-weight: bold; }
+        .empf-section { background-color: #f0f7fa; border: 1px solid #cce5ff; text-align: center; }
+        .empf-btn { display: block; background: var(--accent-blue); color: white; text-align: center; padding: 16px; border-radius: 10px; font-size: 18px; font-weight: bold; text-decoration: none; margin: 10px 0; }
+        #admin-panel { display: none; background: #1a1a1a; color: #fff; padding: 20px; position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 9999; overflow-y: auto; }
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .admin-btn { background: #333; color: white; padding: 12px; text-align: center; text-decoration: none; border-radius: 6px; font-size: 13px; border: 1px solid #444; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="app-logo" onclick="handleAdminLogin()">AVA<br>MPF</div>
+        <h1>AVA 獨立強積金策略</h1>
+    </div>
+
+    <div class="container">
+        <div id="notify-box" style="background:#fff3cd; border-left:4px solid #ffc107; padding:10px; margin-bottom:15px; border-radius:4px; font-size:13px; display:none;">
+            <b>接收更新通知：</b> 點擊允許，以便第一時間獲取策略更新。
+            <button onclick="enableNotifications()" style="background:#ffc107; border:none; padding:5px 10px; border-radius:4px; margin-left:10px; cursor:pointer; font-weight:bold;">允許通知</button>
+        </div>
+
+        <div class="section-card"><div class="section-title">📈 市場趨勢展望</div><div id="market-trend" class="content-text">載入中...</div></div>
+        <div class="section-card"><div class="section-title">💡 策略調整原因</div><div id="strategy-reason" class="content-text">載入中...</div></div>
+        <div class="section-card"><div class="section-title">🎯 建議投資方案</div><div id="investment-plans" class="content-text">載入中...</div></div>
+        <div class="section-card">
+            <div class="section-title">📊 核心基金表現</div>
+            <table class="data-table">
+                <thead><tr><th>基金</th><th>YTD</th><th>1年</th><th>5年</th></tr></thead>
+                <tbody id="performance-table"><tr><td colspan="4">載入中...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="section-card empf-section">
+            <a href="https://portal.empf.org.hk/" target="_blank" class="empf-btn">🚀 立即登入積金易 (eMPF)</a>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <h2 style="color: #4CAF50; margin-top: 0;">🔧 管理者數據中心</h2>
+        
+        <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
+            <h3 style="color: #fff; margin-top: 0; font-size: 16px;">📱 邀請客人安裝系統</h3>
+            <p style="font-size: 12px; color: #bbb; margin-bottom: 12px;">讓客人掃描下方 QR Code，打開後點擊「允許通知」及「加入主畫面」</p>
+            <div style="background: white; padding: 10px; display: inline-block; border-radius: 8px;">
+                <img id="admin-qr" src="" alt="QR Code" width="140" height="140">
+            </div>
+        </div>
+
+        <button onclick="triggerGlobalPush()" style="background:#E91E63; color:white; width:100%; padding:15px; border-radius:8px; font-weight:bold; border:none; margin-bottom:20px;">📢 發送 FCM 推送通知給客人</button>
+        
+        <p style="color: #aaa; font-size: 12px; margin-bottom: 8px;">官方數據捷徑：</p>
+        <div id="admin-links" class="admin-grid"></div>
+        
+        <a href="https://docs.google.com/spreadsheets/d/16_2RrP92AyYBCXNAo-g2SjIvBDw4GQFCL9zUwWGb_HE/edit" target="_blank" class="admin-btn" style="background:#0F9D58; grid-column: span 2; font-weight: bold; margin-top: 15px; display: block;">📊 打開 Google Sheets 更新數據</a>
+
+        <button onclick="document.getElementById('admin-panel').style.display='none'" style="width:100%; margin-top:20px; padding:15px; background:#555; color:white; border:none; border-radius:8px; font-weight:bold;">關閉管理模式</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-messaging.js";
+
+        // 你的 Firebase 設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyCexZ6c_vf71AhuwaFdUyjZSWyO3Cs6Ro4",
+            authDomain: "mpf-app-aa865.firebaseapp.com",
+            projectId: "mpf-app-aa865",
+            storageBucket: "mpf-app-aa865.firebasestorage.app",
+            messagingSenderId: "968635788313",
+            appId: "1:968635788313:web:e5d8e8c2387ea42d934e88"
+        };
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+        
+        // 你的 GAS 部署連結
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyDRBlB8w--L8Syg6qFXMsUJmNTUg1mVOphhI493ps0JaLw5g3XecYFG1XWAdAGJ2Si/exec";
+        window.GAS_API_URL = GAS_API_URL; 
+
+        // 檢查並請求通知權限
+        window.enableNotifications = async function() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // 填入你的 VAPID Key
+                    const token = await getToken(messaging, { vapidKey: 'BAZiew5BlZx9n3dkaPhLEAqMnFx_TxgCCzxf8CgNY-WZbrXg4rTUnZgP_R35ASofIsqTBfULO7M3gt-EPA9En_0' });
+                    if (token) {
+                        fetch(GAS_API_URL, { method: 'POST', body: JSON.stringify({ action: "registerToken", token: token }) });
+                        document.getElementById('notify-box').style.display = 'none';
+                        alert("✅ 通知設定成功！策略更新時將第一時間通知您。");
+                    }
+                }
+            } catch (e) { alert("無法開啟通知，請確認瀏覽器設定。"); }
+        }
+
+        if (Notification.permission === "default") {
+            document.getElementById('notify-box').style.display = 'block';
+        }
+
+        const formatPerf = val => {
+            if (!val || val === "N/A") return "N/A";
+            if (typeof val === 'string' && val.includes('%')) return val;
+            let num = parseFloat(val); return isNaN(num) ? val : +(num * 100).toFixed(2) + "%"; 
+        };
+
+        async function loadAppData() {
+            try {
+                const res = await fetch(GAS_API_URL);
+                const data = await res.json();
+                document.getElementById('market-trend').innerHTML = data.announcements.trend || "";
+                document.getElementById('strategy-reason').innerHTML = data.announcements.reason || "";
+                document.getElementById('investment-plans').innerHTML = data.announcements.plans || "";
+
+                let tableHtml = "";
+                const coreFunds = ["美洲基金", "中港基金", "環球債券基金", "北美股票基金", "強積金保守基金"];
+                data.funds.filter(f => coreFunds.includes(f.name)).forEach(f => {
+                    tableHtml += `<tr><td>${f.name}</td><td class="perf-up">${formatPerf(f.ytd)}</td><td class="perf-up">${formatPerf(f.y1)}</td><td>${formatPerf(f.y5)}</td></tr>`;
+                });
+                document.getElementById('performance-table').innerHTML = tableHtml || "<tr><td colspan='4'>尚未填寫核心基金數據</td></tr>";
+            } catch (e) { document.getElementById('performance-table').innerHTML = "<tr><td colspan='4'>讀取失敗</td></tr>"; }
+        }
+        window.onload = loadAppData;
+    </script>
+
+    <script>
+        const ADMIN_PWD = "0903";
+        const FUNDS_LIST = [{ id: "3G", name: "美洲基金" }, { id: "3E", name: "亞歐基金" }, { id: "3F", name: "中港基金" }]; 
+        
+        function handleAdminLogin() {
+            if (prompt("請輸入管理員密碼：") === ADMIN_PWD) {
+                document.getElementById('admin-panel').style.display = 'block';
+                let btnHtml = FUNDS_LIST.map(f => `<a href="https://www.aia.com.hk/zh-hk/products/mpf/list/fund?id=${f.id}" target="_blank" class="admin-btn">${f.name}</a>`).join("");
+                document.getElementById('admin-links').innerHTML = btnHtml;
+                
+                // 動態生成 QR Code (擷取當前 GitHub Pages 網址)
+                const currentUrl = encodeURIComponent(window.location.href);
+                document.getElementById('admin-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${currentUrl}`;
+            } else {
+                alert("密碼錯誤");
+            }
+        }
+
+        async function triggerGlobalPush() {
+            const msg = prompt("請輸入推送內容 (例如：AVA 團隊本月策略已更新)：");
+            if (!msg) return;
+            try {
+                await fetch(window.GAS_API_URL + "?action=push&title=AVA 策略更新&msg=" + encodeURIComponent(msg));
+                alert("✅ 推送指令已發送！");
+            } catch(e) { alert("發送失敗"); }
+        }
+    </script>
+</body>
+</html>
