@@ -16,7 +16,12 @@ messaging.onBackgroundMessage((payload) => {
     const notificationTitle = payload.notification.title;
     const notificationOptions = {
         body: payload.notification.body,
-        icon: 'https://cdn-icons-png.flaticon.com/512/2950/2950085.png'
+        icon: 'icon.png'
     };
     self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// 加入 Fetch 監聽器，令 Chrome 識別為正式可安裝的 PWA App
+self.addEventListener('fetch', function(event) {
+    // 放空即可，只是為了解鎖 PWA 安裝功能
 });
