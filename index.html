@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 加入無快取 Meta 標籤，雙重保障 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>AVA 獨立強積金策略</title>
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon.png">
@@ -11,7 +15,8 @@
         body { font-family: 'PingFang HK', 'Helvetica Neue', Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; line-height: 1.5; }
         .header { background: #fff; display: flex; align-items: center; justify-content: center; padding: 15px; border-bottom: 2px solid var(--primary-color); position: sticky; top: 0; z-index: 100; }
         .app-logo { width: 38px; height: 38px; border-radius: 8px; margin-right: 12px; cursor: pointer; object-fit: cover; }
-        .header h1 { font-size: 18px; margin: 0; }
+        .header h1 { font-size: 18px; margin: 0; display: flex; align-items: baseline; }
+        .version-badge { font-size: 11px; color: #888; margin-left: 6px; font-weight: normal; }
         .disclaimer { font-size: 11px; color: #888; text-align: center; margin: 12px 20px 0 20px; line-height: 1.4; }
         .container { padding: 10px 15px 50px 15px; max-width: 600px; margin: 0 auto; }
         .section-card { background: var(--card-bg); border-radius: 12px; padding: 18px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
@@ -28,13 +33,29 @@
         #admin-panel { display: none; background: #1a1a1a; color: #fff; padding: 20px; position: fixed; top: 0; bottom: 0; left: 0; right: 0; z-index: 9999; overflow-y: auto; }
         .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .admin-btn { background: #333; color: white; padding: 12px; text-align: center; text-decoration: none; border-radius: 6px; font-size: 13px; border: 1px solid #444; }
+        
+        #notify-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }
+        .modal-content { background: #fff; width: 80%; max-width: 320px; border-radius: 16px; padding: 25px 20px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2); transform: translateY(20px); transition: transform 0.3s; }
+        .modal-icon { font-size: 45px; margin-bottom: 10px; line-height: 1; }
+        .modal-title { margin: 0 0 10px 0; color: var(--primary-color); font-size: 18px; }
+        .modal-msg { font-size: 15px; color: #444; line-height: 1.5; margin-bottom: 25px; white-space: pre-wrap; }
+        .modal-btn { background: var(--primary-color); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; width: 100%; font-size: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
 
+    <div id="notify-modal">
+        <div class="modal-content" id="modal-box">
+            <div class="modal-icon">🔔</div>
+            <h3 class="modal-title">最新策略通知</h3>
+            <p id="notify-modal-msg" class="modal-msg"></p>
+            <button class="modal-btn" onclick="closeNotifyModal()">立即查看</button>
+        </div>
+    </div>
+
     <div class="header">
         <img src="icon.png" class="app-logo" onclick="handleAdminLogin()" alt="AVA Logo">
-        <h1>AVA 獨立強積金策略</h1>
+        <h1>AVA 獨立強積金策略 <span class="version-badge" id="app-version-display">v1.0</span></h1>
     </div>
 
     <div class="disclaimer">【免責聲明】本應用程式提供的資訊僅供內部參考。投資涉及風險，過往表現不代表將來表現。</div>
@@ -66,6 +87,7 @@
         </div>
     </div>
 
+    <!-- 管理者專區 -->
     <div id="admin-panel">
         <h2 style="color: #4CAF50; margin-top: 0;">🔧 管理者數據中心</h2>
         <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; border: 1px solid #444;">
@@ -90,6 +112,10 @@
         const messaging = getMessaging(app);
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyDRBlB8w--L8Syg6qFXMsUJmNTUg1mVOphhI493ps0JaLw5g3XecYFG1XWAdAGJ2Si/exec";
         window.GAS_API_URL = GAS_API_URL; 
+
+        // 【重點 1】：設定當前 App 版本 (必須與剛上傳到 GitHub 的代碼一致)
+        const LOCAL_APP_VERSION = "1.0"; 
+        document.getElementById('app-version-display').innerText = "v" + LOCAL_APP_VERSION;
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./firebase-messaging-sw.js').catch(err => console.error("SW註冊失敗", err));
@@ -118,23 +144,61 @@
             let num = parseFloat(val); return isNaN(num) ? val : +(num * 100).toFixed(2) + "%"; 
         };
 
+        window.closeNotifyModal = function() {
+            document.getElementById('notify-modal').style.opacity = '0';
+            document.getElementById('modal-box').style.transform = 'translateY(20px)';
+            setTimeout(() => { document.getElementById('notify-modal').style.display = 'none'; }, 300);
+        }
+
         async function loadAppData() {
             try {
                 const res = await fetch(GAS_API_URL);
                 const data = await res.json();
+                
+                // 【重點 2】：強制更新邏輯
+                const serverVersion = String(data.announcements.version);
+                if (serverVersion !== "undefined" && serverVersion !== "" && serverVersion !== LOCAL_APP_VERSION) {
+                    const lastReload = localStorage.getItem('lastReloadVersion');
+                    // 防無窮迴圈：如果已經因為呢個新版本重載過，就唔再重載
+                    if (lastReload !== serverVersion) {
+                        localStorage.setItem('lastReloadVersion', serverVersion);
+                        alert("🔄 系統已發佈新版本 (v" + serverVersion + ")，將自動為您更新頁面！");
+                        // 帶住時間戳記重新載入，徹底擊穿緩存
+                        window.location.replace(window.location.pathname + "?v=" + new Date().getTime());
+                        return; // 停止往下渲染舊畫面
+                    }
+                }
+
                 document.getElementById('market-trend').innerHTML = data.announcements.trend || "";
                 document.getElementById('strategy-reason').innerHTML = data.announcements.reason || "";
                 document.getElementById('investment-plans').innerHTML = data.announcements.plans || "";
 
                 let tableHtml = "";
-                // 直接讀取後台傳來的核心基金 (已按 Sheet G 欄排序)
                 data.coreFunds.forEach(f => {
                     tableHtml += `<tr><td>${f.name}</td><td class="perf-up">${formatPerf(f.ytd)}</td><td class="perf-up">${formatPerf(f.y1)}</td><td>${formatPerf(f.y3)}</td><td>${formatPerf(f.y5)}</td></tr>`;
                 });
                 document.getElementById('performance-table').innerHTML = tableHtml || "<tr><td colspan='5'>請在 Google Sheet G 欄填入數字以設定首頁基金</td></tr>";
             } catch (e) { document.getElementById('performance-table').innerHTML = "<tr><td colspan='5'>讀取失敗</td></tr>"; }
         }
-        window.onload = loadAppData;
+
+        window.onload = () => {
+            loadAppData();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const notifyMsg = urlParams.get('notifyMsg');
+            
+            if (notifyMsg) {
+                setTimeout(() => {
+                    document.getElementById('notify-modal-msg').innerText = notifyMsg;
+                    document.getElementById('notify-modal').style.display = 'flex';
+                    setTimeout(() => {
+                        document.getElementById('notify-modal').style.opacity = '1';
+                        document.getElementById('modal-box').style.transform = 'translateY(0)';
+                    }, 50);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }, 500);
+            }
+        };
     </script>
 
     <script>
